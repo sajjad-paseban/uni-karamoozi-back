@@ -1,6 +1,7 @@
 {
     "require": {
         "rakit/validation": "^1.4",
-        "hekmatinasser/verta": "^8.4"
+        "hekmatinasser/verta": "^8.4",
+        "morilog/jalali": "3.*"
     }
 }
