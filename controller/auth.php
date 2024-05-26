@@ -1,7 +1,9 @@
 <?php
 
-require_once '../helper/function.php';
 require_once "../helper/includes.php";
+require_once '../helper/function.php';
+
+use Rakit\Validation\Validator;
 
 $db = new DB();
 
@@ -38,4 +40,60 @@ if(request()->get->method == "register"){
     
 
     return response_json($response, $response->code);
+}
+
+if(request()->get->method == "login"){
+    
+    $validator = new Validator();
+
+    $validation = $validator->make((array)request()->get + (array)request()->post, [
+        'national_code'  => 'required',
+        'password'       => 'required',
+    ]);
+
+    $validation->setMessages([
+        "national_code:required" => 'فیلد کد ملی اجباری می باشد',
+        "password:required" => 'فیلد گذرواژه اجباری می باشد'
+    ]);
+
+
+    $validation->validate();
+    
+    if($validation->fails()){
+        $data = (object)[
+            'validation_failure' => $validation->fails(),
+            'errors' => $validation->errors()->firstOfAll()
+        ];
+        return response_json($data, 200);
+    }
+
+    $nationalcode = request()->data->national_code;
+    $password = request()->data->password;
+    
+    $res = $db->get('users',[], "nationalcode = $nationalcode");
+    $info = $res->fetch_object();
+
+    if($res->num_rows == 1 && $info->status && password_verify($password, $info->password)){
+        
+        $response = (object)[
+            "row" => [
+                "user_info" => param_hidden($info, ['password']),
+                "token" => "a"
+            ],
+            "message" => "ورود شما تایید شد.",
+            "code" => 200
+        ];
+    }
+    else{
+        $response = (object)[
+            "row" => null,
+            "message" => "کد ملی یا گذرواژه اشتباه می باشد.",
+            "code" => 401
+        ];
+    }
+
+
+    return response_json($response, 200);
+
+
 }

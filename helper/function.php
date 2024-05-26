@@ -11,6 +11,8 @@ if(! function_exists("request")){
 
         $data['post'] = json_decode(file_get_contents('php://input'));
 
+        $data['data'] = (object)((array)$data['get'] + (array)$data['post']);
+        
         return (object)$data;
     }
 }
@@ -25,5 +27,17 @@ if(!function_exists('response_json')){
     function response_json($data, $status = 0){
         http_response_code($status);
         print_r(json_encode($data));
+    }
+}
+
+if(!function_exists('param_hidden')){
+    function param_hidden($data, $hideen = []){
+        $data = (array) $data;
+
+        foreach($hideen as $i){
+            unset($data[$i]);
+        }
+
+        return (object) $data;
     }
 }
