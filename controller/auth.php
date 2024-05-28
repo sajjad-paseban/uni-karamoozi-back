@@ -4,6 +4,8 @@ require_once "../helper/includes.php";
 require_once '../helper/function.php';
 
 use Rakit\Validation\Validator;
+use Carbon\Carbon;
+
 
 $db = new DB();
 
@@ -43,7 +45,6 @@ if(request()->get->method == "register"){
 }
 
 if(request()->get->method == "login"){
-    
     $validator = new Validator();
 
     $validation = $validator->make((array)request()->get + (array)request()->post, [
@@ -62,9 +63,10 @@ if(request()->get->method == "login"){
     if($validation->fails()){
         $data = (object)[
             'validation_failure' => $validation->fails(),
-            'errors' => $validation->errors()->firstOfAll()
+            'errors' => $validation->errors()->firstOfAll(),
+            'code' => 400
         ];
-        return response_json($data, 200);
+        return response_json($data, $data->code);
     }
 
     $nationalcode = request()->data->national_code;
@@ -75,12 +77,39 @@ if(request()->get->method == "login"){
 
     if($res->num_rows == 1 && $info->status && password_verify($password, $info->password)){
         
+        $auth_token = $db->get('auth_token',[], "user_id = $info->id and type = 1 and status = 1")->fetch_object();
+        if($auth_token){
+            $response = (object)[
+                "message" => "کاربر session فعال دارد",
+                "code" => 400
+            ];
+
+            return response_json($response, $response->code);
+        }
+
+        $token = bin2hex($info->id.random_bytes(16).'token');
+        $type = 1;
+        $status = true;
+        $date = Carbon::now()->addDays(2);        
+        
+        $stmt = $db->command()->prepare("insert into auth_token(user_id, token, type, status, expire_date) values(?,?,?,?,?)");
+        $stmt->bind_param(
+            "isiis",
+            $info->id,
+            $token,
+            $type,
+            $status,
+            $date
+        );
+        
+        $stmt->execute();
+
         $response = (object)[
             "row" => [
                 "user_info" => param_hidden($info, ['password']),
-                "token" => "a"
+                "token" => $token
             ],
-            "message" => "ورود شما تایید شد.",
+            "message" => "درحال انتقال به پنل کاربری می باشید",
             "code" => 200
         ];
     }
@@ -93,7 +122,63 @@ if(request()->get->method == "login"){
     }
 
 
-    return response_json($response, 200);
+    return response_json($response, $response->code);
+
+
+}
+
+if(request()->get->method == "logout"){
+    $validator = new Validator();
+
+    $validation = $validator->make((array)request()->get + (array)request()->post, [
+        'user_id'  => 'required',
+        'token'       => 'required',
+    ]);
+
+    $validation->setMessages([
+        "user_id:required" => 'آیدی کاربر می بایست ارسال شود',
+        "token:required" => 'token می بایست ارسال شود'
+    ]);
+
+
+    $validation->validate();
+    
+    if($validation->fails()){
+        $data = (object)[
+            'validation_failure' => $validation->fails(),
+            'errors' => $validation->errors()->firstOfAll(),
+            'code' => 400
+        ];
+
+        return response_json($data, $data->code);
+    }
+
+    $user_id = request()->data->user_id;
+    $token = request()->data->token;
+    
+    
+    $res = $db->get('auth_token',[], "user_id = $user_id and token = '$token' and type = 1 and status = 1");
+    $info = $res->fetch_object();
+
+    if($res->num_rows == 1){
+        
+        $db->query("UPDATE auth_token SET status = 0 where user_id = $user_id and token = '$token'");
+
+        $response = (object)[
+            "message" => "خروج از سامانه با موفقیت انجام شد",
+            "code" => 200
+        ];
+    }
+    else{
+        $response = (object)[
+            "row" => null,
+            "message" => "همچین session ای وجود ندارد",
+            "code" => 401
+        ];
+    }
+
+
+    return response_json($response, $response->code);
 
 
 }
