@@ -1,15 +1,19 @@
 <?php
 
+
 if(! function_exists("request")){
     function request(){
         $data = [];
+
+        $_POST = json_decode(file_get_contents('php://input'), true);
+
         if(!isset($_REQUEST['method']))
             $_REQUEST['method'] = '';
     
 
         $data['get'] =(object)$_REQUEST;
 
-        $data['post'] = json_decode(file_get_contents('php://input'));
+        $data['post'] = (object)$_POST;
 
         $data['data'] = (object)((array)$data['get'] + (array)$data['post']);
         
