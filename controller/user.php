@@ -39,10 +39,11 @@ if(request()->get->method == "get-info"){
 
     $user_id = request()->data->user_id;
     $user = $db->get('users', [], "id = $user_id");
-
+    $info = $user->fetch_object();
+    $info->fullname = strlen(($info->fname .''. $info->lname)) > 0 ? ($info->fname .' '. $info->lname) : null;
     $response = (object)[
         "row" => [
-            "user_info" => $user->fetch_object()
+            "info" => $info
         ],
         "message" => "اطلاعات دریافت شد",
         "code" => 200
