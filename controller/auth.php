@@ -127,6 +127,73 @@ if(request()->get->method == "login"){
 
 }
 
+if(request()->get->method == "check-auth-expiration"){
+    $validator = new Validator();
+
+    $validation = $validator->make((array)request()->get + (array)request()->post, [
+        'user_id'  => 'required',
+        'token'       => 'required',
+    ]);
+
+    $validation->setMessages([
+        "user_id:required" => 'آیدی کاربر می بایست ارسال شود',
+        "token:required" => 'token می بایست ارسال شود'
+    ]);
+
+
+    $validation->validate();
+    
+    if($validation->fails()){
+        $data = (object)[
+            'validation_failure' => $validation->fails(),
+            'errors' => $validation->errors()->firstOfAll(),
+            'code' => 400
+        ];
+
+        return response_json($data, $data->code);
+    }
+
+    $user_id = request()->data->user_id;
+    $token = request()->data->token;
+    
+    
+    $res = $db->get('auth_token',[], "user_id = $user_id and token = '$token' and type = 1 and status = 1");
+
+    if($res->num_rows == 1){
+        
+        $auth_token = $res->fetch_object();
+        $diff = Carbon::now()->diffInDays(Carbon::parse($auth_token->expire_date)); 
+        
+        if($diff < 0){
+            $db->query("UPDATE auth_token SET status = 0 WHERE user_id = $user_id and token = '$token'");
+            
+            $response = (object)[
+                "check" => false,
+                "message" => "token منقضی شده است",
+                "code" => 401
+            ];    
+        }else{
+            $response = (object)[
+                "check" => true,
+                "message" => "token معتبر می باشد",
+                "code" => 200
+            ];
+        }
+    }
+    else{
+        $response = (object)[
+            "check" => false,
+            "message" => "همچین token ای وجود ندارد",
+            "code" => 401
+        ];
+    }
+
+
+    return response_json($response, $response->code);
+
+
+}
+
 if(request()->get->method == "logout"){
     $validator = new Validator();
 
@@ -181,4 +248,8 @@ if(request()->get->method == "logout"){
     return response_json($response, $response->code);
 
 
+}
+
+if(request()->get->method == "change-password"){
+    die(request()->data);
 }
