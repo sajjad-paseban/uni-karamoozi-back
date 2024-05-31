@@ -16,7 +16,7 @@ function middleware_user_login($auth){
             $diff = Carbon::now()->diffInDays(Carbon::parse($auth_token->expire_date)); 
             
             if($diff < 0){
-                $db->query("UPDATE auth_token SET status = 0 WHERE user_id = $user_id and token = $token");
+                $db->query("UPDATE auth_token SET status = 0 WHERE user_id = $user_id and token = '$token'");
             }
             
         }else{
