@@ -1,5 +1,6 @@
 <?php
 
+require_once "../helper/middleware.php";
 require_once "../helper/includes.php";
 require_once '../helper/function.php';
 
@@ -251,5 +252,53 @@ if(request()->get->method == "logout"){
 }
 
 if(request()->get->method == "change-password"){
-    die(request()->data);
+    middleware_user_login(request()->data);
+
+
+    $validator = new Validator();
+    
+    $validation = $validator->make((array)request()->get + (array)request()->post, [
+        'password'  => 'required|min:8',
+        're_password'       => 'required|same:password',
+    ]);
+
+    $validation->setMessages([
+        "password:required" => 'فیلد کلمه عبور اجباری می باشد',
+        "password:min" => 'فیلد کلمه عبور می بایست حداقل هشت رقمی باشد',
+        "re_password:required" => 'فیلد تکرار کلمه عبور اجباری می باشد',
+        "re_password:same" => 'فیلد کلمه عبور با تکرار کلمه عبور یکسان نمی باشد'
+    ]);
+
+
+    $validation->validate();
+    
+    if($validation->fails()){
+        $data = (object)[
+            'validation_failure' => $validation->fails(),
+            'errors' => $validation->errors()->firstOfAll(),
+            'code' => 400
+        ];
+
+        return response_json($data, $data->code);
+    }
+
+
+
+
+    $user_id = request()->data->user_id;
+    $hashed_password = password_hash(request()->data->password, PASSWORD_DEFAULT);
+    $res = $db->query("UPDATE users set password = '$hashed_password' where id = $user_id");
+    if($res){
+        $response = (object)[
+            "message" => "کلمه عبور تغییر کرد",
+            "code" => 200
+        ];
+    }else{
+        $response = (object)[
+            "message" => "عملیات با خطا مواجه شد",
+            "code" => 400
+        ];
+    }
+    
+    return response_json($response, $response->code);
 }

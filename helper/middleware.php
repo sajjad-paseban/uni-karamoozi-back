@@ -6,7 +6,13 @@ use Carbon\Carbon;
 function middleware_user_login($auth){
     $db = new DB();    
     
+    $response = (object)[
+        'message' => 'خطای authentication',
+        'code' => 401
+    ];
+
     if(isset($auth->user_id) && isset($auth->token)){
+
         $user_id = $auth->user_id;
         $token = $auth->token;
         
@@ -17,16 +23,17 @@ function middleware_user_login($auth){
             
             if($diff < 0){
                 $db->query("UPDATE auth_token SET status = 0 WHERE user_id = $user_id and token = '$token'");
+    
+                die(response_json($response, $response->code));
             }
             
         }else{
-            $response = (object)[
-                'message' => 'خطای authentication',
-                'code' => 401
-            ];
 
             die(response_json($response, $response->code));
         }
+    }else{
+            die(response_json($response, $response->code));
+
     }
     
 }
