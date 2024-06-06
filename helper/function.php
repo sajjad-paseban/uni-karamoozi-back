@@ -1,5 +1,6 @@
 <?php
 
+require_once "../helper/includes.php";
 
 if(! function_exists("request")){
     function request(){
@@ -43,5 +44,78 @@ if(!function_exists('param_hidden')){
         }
 
         return (object) $data;
+    }
+}
+
+if(!function_exists('customErrorMessage')){
+    function customErrorMessage($field, $error){
+        $erros = [
+            'required' => "فیلد $field اجباری می باشد",
+            'email' => "$field نامعتبر می باشد",
+        ];
+
+        return $erros[$error];
+    }
+}
+
+if(!function_exists('withForArray')){
+    function withForArray($target, $models){
+
+        $db = new DB();
+        foreach($target as $key1 => $item){
+            foreach($models as $key2 => $model){
+                if(is_int($key2)){
+                    
+                    $foreign_key = ((string)$model) . '_id';
+                    $foreign_key = $item[$foreign_key];
+                    $data = $db->get((string)$model, [], "id = $foreign_key");
+                    $res = ($data->num_rows > 1) ? $data->fetch_all(MYSQLI_ASSOC) : $data->fetch_object();
+
+                    $target[$key1][$model] = $res ?? null;
+                }else{
+                    $model = (object) $model;
+                    $primary_key = (string) $model->primary_key;
+                    $foreign_key = (string) $model->foreign_key;
+                    $foreign_key = $item[$foreign_key];
+                    $data = $db->get((string)$key2, [], "$primary_key = $foreign_key");
+                    $res = ($data->num_rows > 1) ? $data->fetch_all(MYSQLI_ASSOC) : $data->fetch_object();
+                    $target[$key1][(string) $model->model_name] = $res ?? null;
+                }
+            }
+        }
+
+        return $target;
+
+    }
+}
+
+if(!function_exists('withForObject')){
+    function withForObject($target, $models){
+
+        $db = new DB();
+        foreach($models as $key2 => $model){
+            if(is_int($key2)){
+                
+                $foreign_key = ((string)$model) . '_id';
+                $foreign_key = $target->$foreign_key;
+                $data = $db->get((string)$model, [], "id = $foreign_key");
+                $res = ($data->num_rows > 1) ? $data->fetch_all(MYSQLI_ASSOC) : $data->fetch_object();
+                $target = (array) $target;
+                $target[$model] = $res ?? null;
+            }else{
+                $model = (object) $model;
+                $primary_key = (string) $model->primary_key;
+                $foreign_key = (string) $model->foreign_key;
+                $foreign_key = $target->$foreign_key;
+                $data = $db->get((string)$key2, [], "$primary_key = $foreign_key");
+                $res = ($data->num_rows > 1) ? $data->fetch_all(MYSQLI_ASSOC) : $data->fetch_object();
+                
+                $target = (array) $target;
+                $target[$model->model_name] = $res ?? null;
+            }
+        }
+
+        return (object)$target;
+
     }
 }

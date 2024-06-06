@@ -53,7 +53,7 @@ if(request()->get->method == "get-info"){
 }
 
 if(request()->get->method == "update-user-info"){
- $validator = new Validator();
+    $validator = new Validator();
 
     $validation = $validator->make((array) request()->data, 
     [
