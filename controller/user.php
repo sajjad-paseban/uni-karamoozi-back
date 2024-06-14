@@ -11,6 +11,39 @@ middleware_user_login(request()->data);
 
 $db = new DB();
 
+if(request()->get->method == "get-data"){
+    
+    if(isset(request()->data->id)){
+
+        $id = request()->data->id;
+
+        $res = $db->get('users',[], "id = $id");
+
+        $user_list = $res->fetch_object();
+
+    }else{
+
+        $res = $db->get('users',[]);
+
+        $user_list = $res->fetch_all(MYSQLI_ASSOC);
+        
+    }
+    
+
+    
+    
+
+    $response = (object)[
+        'row' => [
+            'user_list' => $user_list,
+        ],
+        'message' => 'لیست کاربر ها با موفقیت ارسال شذ',
+        'code' => 200
+    ];
+
+    return response_json($response, $response->code);
+}
+
 if(request()->get->method == "get-info"){
     
     $validator = new Validator();
@@ -168,6 +201,139 @@ if(request()->get->method == "profile-picture-upload"){
     return response_json($response, $response->code);
 }
 
+if(request()->get->method == "create-user"){
+    $validator = new Validator();
+
+    $validation = $validator->make((array) request()->data, 
+    [
+        'nationalcode' => "required",
+        'phone' => "required",
+        'email' => "required|email",
+        'password' => "required",
+        'status' => "required",
+    ] , 
+    [
+        'nationalcode:required' => customErrorMessage('کد ملی', 'required'),
+        'phone:required' => customErrorMessage('شماره همراه', 'required'),
+        'email:required' => customErrorMessage('پست الکترونیکی', 'required'),
+        'email:email' => customErrorMessage('پست الکترونیکی', 'email'),
+        'password:required' => customErrorMessage('گذرواژه', 'required'),
+        'status:required' => customErrorMessage('وضعیت', 'required'),
+    ]);
+
+    $validation->validate();
+
+    if($validation->fails()){
+        $data = (object)[
+            'validation_failure' => $validation->fails(),
+            'errors' => $validation->errors()->firstOfAll(),
+            'code' => 400
+        ];
+
+        return response_json($data, $data->code);
+    }
+
+    $data = request()->data;
+    
+    $num_rows = $db->get('users', [], "nationalcode = '".$data->nationalcode. "' or email = '".$data->email."'")->num_rows;
+    if($num_rows == 0){
+        $stmt = $db->command()->prepare('insert into users(nationalcode, phone, email, password, status) values(?,?,?,?,?)');
+        $hashed_password = password_hash($data->password, PASSWORD_DEFAULT);
+        $stmt->bind_param(
+            'isssi', 
+            $data->nationalcode,
+            $data->phone,
+            $data->email,
+            $hashed_password,
+            $data->status,
+        );
+    
+        $stmt->execute();
+        
+        $response = (object) [
+            'user_id' => $stmt->insert_id,
+            'message' => "عملیات با موفقیت انجام شد",
+            'code' => 201
+        ];
+    }else{
+        $response = (object) [
+            'user_id' => null,
+            'message' => "کاربری با این مشخصات از قبل ثبت نام کرده است",
+            'code' => 400
+        ];
+    }
+    
+    
+
+    return response_json($response, $response->code);
+    
+}
+
+if(request()->get->method == "update-user"){
+    $validator = new Validator();
+
+    $validation = $validator->make((array) request()->data, 
+    [
+        'nationalcode' => "required",
+        'phone' => "required",
+        'email' => "required|email",
+        'password' => "required",
+        'status' => "required",
+    ] , 
+    [
+        'nationalcode:required' => customErrorMessage('کد ملی', 'required'),
+        'phone:required' => customErrorMessage('شماره همراه', 'required'),
+        'email:required' => customErrorMessage('پست الکترونیکی', 'required'),
+        'email:email' => customErrorMessage('پست الکترونیکی', 'email'),
+        'password:required' => customErrorMessage('گذرواژه', 'required'),
+        'status:required' => customErrorMessage('وضعیت', 'required'),
+    ]);
+
+    $validation->validate();
+
+    if($validation->fails()){
+        $data = (object)[
+            'validation_failure' => $validation->fails(),
+            'errors' => $validation->errors()->firstOfAll(),
+            'code' => 400
+        ];
+
+        return response_json($data, $data->code);
+    }
+
+    $data = request()->data;
+    
+    $num_rows = $db->get('users', [], "nationalcode = '".$data->nationalcode. "' or email = '".$data->email."'")->num_rows;
+    if($num_rows == 1 || $num_rows == 0){
+        $stmt = $db->command()->prepare('UPDATE users SET nationalcode = ?, phone = ?, email = ?, status = ? WHERE id = ?');
+        $stmt->bind_param(
+            'issii', 
+            $data->nationalcode,
+            $data->phone,
+            $data->email,
+            $data->status,
+            $data->id
+        );
+    
+        $stmt->execute();
+        
+        $response = (object) [
+            'message' => "عملیات با موفقیت انجام شد",
+            'code' => 201
+        ];
+    }else{
+        $response = (object) [
+            'message' => "کاربری با این مشخصات از قبل وجود دارد",
+            'code' => 400
+        ];
+    }
+    
+    
+
+    return response_json($response, $response->code);
+    
+}
+
 if(request()->get->method == 'remove-profile-picture'){
     $user_id = request()->data->user_id;
 
@@ -185,6 +351,93 @@ if(request()->get->method == 'remove-profile-picture'){
         'message' => ($result) ? 'تصویر پروفایل شما حذف گردید' : 'عملیات با خطا مواجه گردید',
         'code' => ($result) ? 200 : 400 
     ];
+
+    return response_json($response, $response->code);
+}
+
+if(request()->get->method == "delete-user"){
+    $validator = new Validator();
+
+    $validation = $validator->make((array) request()->data, 
+    [
+        'ids' => "required",
+    ] , 
+    [
+        'ids:required' => customErrorMessage('آیدی', 'required'),
+    ]);
+
+    $validation->validate();
+
+    if($validation->fails()){
+        $data = (object)[
+            'validation_failure' => $validation->fails(),
+            'errors' => $validation->errors()->firstOfAll(),
+            'code' => 400
+        ];
+
+        return response_json($data, $data->code);
+    }
+    
+    $ids = request()->data->ids;
+    $res = $db->query("DELETE FROM users where id in($ids)");   
+    
+    $response = (object)[
+        'message' => ($res) ? 'کاربر با موفقیت حذف گردید' : 'عملیات با خطا مواجه گردید',
+        'code' => ($res) ? 200 : 400 
+    ];
+
+    return response_json($response, $response->code);
+}
+
+if(request()->get->method == "reset-password"){
+    $validator = new Validator();
+
+    $validation = $validator->make((array) request()->data, 
+    [
+        'id' => "required",
+    ] , 
+    [
+        'id:required' => customErrorMessage('آیدی کاربر', 'required'),
+    ]);
+
+    $validation->validate();
+
+    if($validation->fails()){
+        $data = (object)[
+            'validation_failure' => $validation->fails(),
+            'errors' => $validation->errors()->firstOfAll(),
+            'code' => 400
+        ];
+
+        return response_json($data, $data->code);
+    }
+    
+    $user_id = request()->data->id;
+    $res = $db->get('users', [], "id = $user_id");
+    $num_rows = $res->num_rows;
+
+    if($num_rows > 0){
+        $hashed_password = password_hash('0'.$res->fetch_object()->nationalcode, PASSWORD_DEFAULT);
+
+        $update_res = $db->query("UPDATE users SET password = '$hashed_password' WHERE id = $user_id");
+        
+        if($update_res)
+            $response = (object)[
+                "message" => "گذرواژه ریست گردید و کد ملی جایگزین آن شد",
+                "code" => 200
+            ];
+        else
+            $response = (object)[
+                "message" => "عملیات با خطا مواجه گردید",
+                "code" => 400
+            ];
+
+    }else{
+        $response = (object)[
+            "message" => "عملیات با خطا مواجه گردید",
+            "code" => 400
+        ];
+    }
 
     return response_json($response, $response->code);
 }

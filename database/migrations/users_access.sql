@@ -1,15 +1,14 @@
--- Active: 1716540807319@@127.0.0.1@3306@uni_karamoozi
+-- Active: 1718361914524@@127.0.0.1@3306@uni_karamoozi
 
-CREATE Table users_roles(
+CREATE Table users_access(
     id int PRIMARY KEY AUTO_INCREMENT,
-    user_id INT NOT NULL,
-    role_id INT NOT NULL,
-    default_role BOOLEAN DEFAULT 0 NULL,
+    user_id int NOT NULL,
+    menu_id int NOT NULL,
     status BOOLEAN DEFAULT 1 NULL,
     create_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NULL,
     created_by int NULL,
     updated_by int NULL,
     Foreign Key (user_id) REFERENCES users(id),
-    Foreign Key (role_id) REFERENCES roles(id)
+    Foreign Key (menu_id) REFERENCES menu(id)
 )

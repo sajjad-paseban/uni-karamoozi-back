@@ -61,6 +61,7 @@ if(request()->get->method == "create-menu"){
         'key_param' => "required",
         'logo' => "required",
         'parent_id' => "required",
+        'priority' => "required",
         'status' => "required",
     ] , 
     [
@@ -69,6 +70,7 @@ if(request()->get->method == "create-menu"){
         'key_param:required' => customErrorMessage('کلید', 'required'),
         'logo:required' => customErrorMessage('آیکون', 'required'),
         'parent_id:required' => customErrorMessage('والد', 'required'),
+        'priority:required' => customErrorMessage('الویت', 'required'),
         'status:required' => customErrorMessage('وضعیت', 'required'),
     ]);
 
@@ -84,14 +86,15 @@ if(request()->get->method == "create-menu"){
         return response_json($data, $data->code);
     }
 
-    $stmt = $db->command()->prepare("INSERT INTO menu(title,path,key_param,logo,parent_id,status) VALUES(?,?,?,?,?,?)");
+    $stmt = $db->command()->prepare("INSERT INTO menu(title,path,key_param,logo,parent_id,priority,status) VALUES(?,?,?,?,?,?,?)");
     $stmt->bind_param(
-        'ssssii',
+        'ssssiii',
         request()->data->title,
         request()->data->path,
         request()->data->key_param,
         request()->data->logo,
         request()->data->parent_id,
+        request()->data->priority,
         request()->data->status,
     );
     
@@ -115,6 +118,7 @@ if(request()->get->method == "update-menu"){
         'key_param' => "required",
         'logo' => "required",
         'parent_id' => "required",
+        'priority' => "required",
         'status' => "required",
     ] , 
     [
@@ -123,6 +127,7 @@ if(request()->get->method == "update-menu"){
         'key_param:required' => customErrorMessage('کلید', 'required'),
         'logo:required' => customErrorMessage('آیکون', 'required'),
         'parent_id:required' => customErrorMessage('والد', 'required'),
+        'priority:required' => customErrorMessage('الویت', 'required'),
         'status:required' => customErrorMessage('وضعیت', 'required'),
     ]);
 
@@ -138,14 +143,15 @@ if(request()->get->method == "update-menu"){
         return response_json($data, $data->code);
     }
 
-    $stmt = $db->command()->prepare("UPDATE menu SET title = ?, path = ?, key_param = ?, logo = ?, parent_id = ?, status = ? WHERE id = ?");
+    $stmt = $db->command()->prepare("UPDATE menu SET title = ?, path = ?, key_param = ?, logo = ?, parent_id = ?, priority = ?, status = ? WHERE id = ?");
     $stmt->bind_param(
-        'ssssiii',
+        'ssssiiii',
         request()->data->title,
         request()->data->path,
         request()->data->key_param,
         request()->data->logo,
         request()->data->parent_id,
+        request()->data->priority,
         request()->data->status,
         request()->data->id
     );
