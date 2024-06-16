@@ -441,3 +441,67 @@ if(request()->get->method == "reset-password"){
 
     return response_json($response, $response->code);
 }
+
+if(request()->get->method == "get-user-access"){
+    $validator = new Validator();
+
+    $validation = $validator->make((array) request()->data, 
+    [
+        'user_id' => "required",
+        'role_id' => "required",
+    ] , 
+    [
+        'user_id:required' => customErrorMessage('آیدی کاربر', 'required'),
+        'role_id:required' => customErrorMessage('آیدی نقش', 'required'),
+    ]);
+
+    $validation->validate();
+
+    if($validation->fails()){
+        $data = (object)[
+            'validation_failure' => $validation->fails(),
+            'errors' => $validation->errors()->firstOfAll(),
+            'code' => 400
+        ];
+
+        return response_json($data, $data->code);
+    }
+    
+    $user_id = request()->data->user_id;
+    $role_id = request()->data->role_id;
+    
+    $user_res = $db->get('users_access', [], "user_id = $user_id");
+    $role_res = $db->get('roles_access', [], "role_id = $role_id");
+    
+    if($user_res->num_rows > 0 || $role_res->num_rows > 0){
+        $user_list = withForArray($user_res->fetch_all(MYSQLI_ASSOC),
+            [
+                "users" => ['primary_key' => 'id', 'foreign_key' => 'user_id', 'model_name' => 'user'],
+                'menu' => ['primary_key' => 'id', 'foreign_key' => 'menu_id', 'model_name' => 'menu']
+            ]
+        );
+        $role_list = withForArray($role_res->fetch_all(MYSQLI_ASSOC), 
+            [
+                "roles" => ['primary_key' => 'id', 'foreign_key' => 'role_id', 'model_name' => 'role'],
+                'menu' => ['primary_key' => 'id', 'foreign_key' => 'menu_id', 'model_name' => 'menu']
+            ]
+        );
+        
+        $response = (object)[
+            'row' => array_merge($user_list, $role_list),
+            'message' => 'دسترسی کاربر با موفقیت ارسال گردید',
+            'code' => 200
+        ];
+
+    }else{
+
+        $response = (object)[
+            'row' => [],
+            'message' => 'عملیات با خطا مواجه گردید',
+            'code' => 400 
+        ];
+        
+    }
+
+    return response_json($response, $response->code);
+}
