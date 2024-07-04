@@ -28,10 +28,6 @@ if(request()->get->method == "get-data"){
         $user_list = $res->fetch_all(MYSQLI_ASSOC);
         
     }
-    
-
-    
-    
 
     $response = (object)[
         'row' => [
@@ -76,7 +72,7 @@ if(request()->get->method == "get-info"){
     $info->fullname = strlen(($info->fname .''. $info->lname)) > 0 ? ($info->fname .' '. $info->lname) : null;
     $response = (object)[
         "row" => [
-            "info" => param_hidden($info, ['password'])
+            "info" => param_hidden($info, ['password']),
         ],
         "message" => "اطلاعات دریافت شد",
         "code" => 200

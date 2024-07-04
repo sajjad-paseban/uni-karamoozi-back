@@ -17,7 +17,7 @@ if(request()->get->method == "get-data"){
 
         $id = request()->data->id;
         
-        $res = $db->get('company_registration_application',[],"id = $id");
+        $res = $db->get('intern_recruitment_application',[],"id = $id");
         $item = $res->fetch_object();
 
         $item = withForObject($item, [
@@ -28,11 +28,11 @@ if(request()->get->method == "get-data"){
             $item[$key]['user'] = param_hidden($row['user'], ['password']);
         }
 
-        $company_registration_application_list = $item;
+        $intern_recruitment_application_list = $item;
 
     }else{
 
-        $res = $db->get('company_registration_application',[]);
+        $res = $db->get('intern_recruitment_application',[]);
         $list = $res->fetch_all(MYSQLI_ASSOC);
 
         $list = withForArray($list, [
@@ -43,7 +43,7 @@ if(request()->get->method == "get-data"){
             $list[$key]['user'] = param_hidden($row['user'], ['password']);
         }
 
-        $company_registration_application_list = $list;
+        $intern_recruitment_application_list = $list;
         
     }
     
@@ -53,9 +53,9 @@ if(request()->get->method == "get-data"){
 
     $response = (object)[
         'row' => [
-            'company_registration_application_list' => $company_registration_application_list,
+            'intern_recruitment_application_list' => $intern_recruitment_application_list,
         ],
-        'message' => 'لیست درخواست های ثبت شرکت با موفقیت ارسال شذ',
+        'message' => 'لیست درخواست های جذب کارآموز با موفقیت ارسال شذ',
         'code' => 200
     ];
 
@@ -67,7 +67,7 @@ if(request()->get->method == "get-data-by-user-id"){
 
     $user_id = request()->data->user_id;
     
-    $res = $db->get('company_registration_application',[],"user_id = $user_id");
+    $res = $db->get('intern_recruitment_application',[],"user_id = $user_id");
     
     $item = $res->fetch_object();
     
@@ -81,41 +81,35 @@ if(request()->get->method == "get-data-by-user-id"){
 
     }
 
-    $company_registration_application_list = $item;
+    $intern_recruitment_application_list = $item;
 
     
 
     $response = (object)[
         'row' => [
-            'company_registration_application_list' => $company_registration_application_list,
+            'intern_recruitment_application_list' => $intern_recruitment_application_list,
         ],
-        'message' => 'لیست درخواست های ثبت شرکت با موفقیت ارسال شذ',
+        'message' => 'لیست درخواست های جذب کارآموز با موفقیت ارسال شذ',
         'code' => 200
     ];
 
     return response_json($response, $response->code);
 }
 
-if(request()->get->method == "create-company-registration-application"){
+if(request()->get->method == "create-intern-recruitment-application"){
     $validator = new Validator();
 
     $validation = $validator->make((array) request()->data, 
     [
-        'company_name' => "required",
-        'company_manager_name' => "required",
-        'company_supervisor_name' => "required",
-        'company_supervisor_phone' => "required",
-        'company_telephone' => "required",
-        'company_address' => "required",
+        'code' => "required",
+        'group_id' => "required",
+        'capacity' => "required",
         'description' => "required",
     ] , 
     [
-        'company_name:required' => customErrorMessage('نام شرکت', 'required'),
-        'company_manager_name:required' => customErrorMessage('نام مدیر عامل شرکت', 'required'),
-        'company_supervisor_name:required' => customErrorMessage('نام سرپرست شرکت', 'required'),
-        'company_supervisor_phone:required' => customErrorMessage('شماره سرپرست شرکت', 'required'),
-        'company_telephone:required' => customErrorMessage('شماره تماس شرکت', 'required'),
-        'company_address:required' => customErrorMessage('آدرس شرکت', 'required'),
+        'code:required' => customErrorMessage('کد', 'required'),
+        'group_id:required' => customErrorMessage('گروه', 'required'),
+        'capacity:required' => customErrorMessage('ظرفیت', 'required'),
         'description:required' => customErrorMessage('توضیحات', 'required'),
     ]);
 
@@ -130,31 +124,31 @@ if(request()->get->method == "create-company-registration-application"){
 
         return response_json($data, $data->code);
     }
-
-    $stmt = $db->command()->prepare("INSERT INTO company_registration_application(user_id, company_name, company_manager_name, company_supervisor_name, company_supervisor_phone, company_telephone, company_address, description, status) VALUES(?,?,?,?,?,?,?,?, null)");
+    
+    $user_id = request()->data->user_id;
+    $cra = $db->get('company_registration_application', [], "user_id = $user_id")->fetch_object();
+    $stmt = $db->command()->prepare("INSERT INTO intern_recruitment_application(code, user_id, cra_id, group_id, capacity, description, status) VALUES(?,?,?,?,?,?, null)");
     $stmt->bind_param(
-        'isssiiss',
+        'siiiis',
+        request()->data->code,
         request()->data->user_id,
-        request()->data->company_name,
-        request()->data->company_manager_name,
-        request()->data->company_supervisor_name,
-        request()->data->company_supervisor_phone,
-        request()->data->company_telephone,
-        request()->data->company_address,
+        $cra->id,
+        request()->data->group_id,
+        request()->data->capacity,
         request()->data->description
     );
     
     $res = $stmt->execute();
 
     $response = (object)[
-        'message' => ($res) ? 'درخواست ثبت شرکت با موفقیت اضافه گردید' : 'عملیات با خطا مواجه گردید',
+        'message' => ($res) ? 'درخواست جذب کارآموز با موفقیت اضافه گردید' : 'عملیات با خطا مواجه گردید',
         'code' => ($res) ? 200 : 400 
     ];
 
     return response_json($response, $response->code);    
 }
 
-if(request()->get->method == "delete-company-registration-application"){
+if(request()->get->method == "delete-intern-recruitment-application"){
     $validator = new Validator();
 
     $validation = $validator->make((array) request()->data, 
@@ -178,17 +172,17 @@ if(request()->get->method == "delete-company-registration-application"){
     }
     
     $ids = request()->data->ids;
-    $res = $db->query("DELETE FROM company_registration_application where id in($ids)");   
+    $res = $db->query("DELETE FROM intern_recruitment_application where id in($ids)");   
     
     $response = (object)[
-        'message' => ($res) ? 'درخواست ثبت شرکت با موفقیت حذف گردید' : 'عملیات با خطا مواجه گردید',
+        'message' => ($res) ? 'درخواست جذب کارآموز با موفقیت حذف گردید' : 'عملیات با خطا مواجه گردید',
         'code' => ($res) ? 200 : 400 
     ];
 
     return response_json($response, $response->code);
 }
 
-if(request()->get->method == "change-status-company-registration-application"){
+if(request()->get->method == "change-status-intern-recruitment-application"){
     $validator = new Validator();
 
     $validation = $validator->make((array) request()->data, 
@@ -213,7 +207,7 @@ if(request()->get->method == "change-status-company-registration-application"){
         return response_json($data, $data->code);
     }
     
-    $stmt = $db->command()->prepare("UPDATE company_registration_application SET status = ? where id = ?");
+    $stmt = $db->command()->prepare("UPDATE intern_recruitment_application SET status = ? where id = ?");
     $stmt->bind_param(
         'ii',
         request()->data->status,
@@ -224,7 +218,7 @@ if(request()->get->method == "change-status-company-registration-application"){
 
     $role_res = null;
     $cra_id = request()->data->cra_id;
-    $cra = $db->get('company_registration_application', [], "id = $cra_id")->fetch_object();
+    $cra = $db->get('intern_recruitment_application', [], "id = $cra_id")->fetch_object();
     $user_id = $cra->user_id;
     
     if(request()->data->status){   
@@ -234,7 +228,7 @@ if(request()->get->method == "change-status-company-registration-application"){
     }
     
     $response = (object)[
-        'message' => ($res) ? 'وضعیت درخواست ثبت شرکت با موفقیت تغییر پیدا کرد' : 'عملیات با خطا مواجه گردید',
+        'message' => ($res) ? 'وضعیت درخواست جذب کارآموز با موفقیت تغییر پیدا کرد' : 'عملیات با خطا مواجه گردید',
         'code' => ($res) ? 200 : 400 
     ];
 

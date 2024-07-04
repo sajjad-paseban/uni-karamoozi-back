@@ -1,11 +1,11 @@
 -- Active: 1718361914524@@127.0.0.1@3306@uni_karamoozi
-CREATE Table sites_management(
-    id int PRIMARY KEY AUTO_INCREMENT,
+CREATE Table semester(
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    code INT NULL,
     name VARCHAR(255) NULL,
-    link VARCHAR(255) NULL,
-    status BOOLEAN DEFAULT 1 NULL,
+    is_active BOOLEAN DEFAULT 1 NULL,
     create_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NULL,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NULL,
-    created_by int NULL,
-    updated_by int NULL
+    created_by INT NULL,
+    updated_by INT NULL
 )
