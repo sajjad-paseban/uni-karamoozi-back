@@ -245,6 +245,10 @@ if(request()->get->method == "create-user"){
         );
     
         $stmt->execute();
+ 
+        $us_id = $stmt->insert_id;
+        $ro_id = env('DEFAULT_ROEL');
+        $db->query("INSERT INTO users_roles(user_id, role_id, default) VALUES($$us_id, $ro_id, 1)");
         
         $response = (object) [
             'user_id' => $stmt->insert_id,
