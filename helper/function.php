@@ -103,6 +103,7 @@ if(!function_exists('withForObject')){
                 $target = (array) $target;
                 $target[$model] = $res ?? null;
             }else{
+                $target = (object) $target;
                 $model = (object) $model;
                 $primary_key = (string) $model->primary_key;
                 $foreign_key = (string) $model->foreign_key;

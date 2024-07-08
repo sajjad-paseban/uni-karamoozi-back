@@ -56,12 +56,12 @@ if(request()->get->method == "create-users-roles"){
 
     $validation = $validator->make((array) request()->data, 
     [
-        'user_id' => "required",
+        'user_role_id' => "required",
         'role_id' => "required",
         'status' => "required",
     ] , 
     [
-        'user_id:required' => customErrorMessage('کابر', 'required'),
+        'user_role_id:required' => customErrorMessage('کابر', 'required'),
         'role_id:required' => customErrorMessage('نقش', 'required'),
         'status:required' => customErrorMessage('وضعیت', 'required'),
     ]);
@@ -78,7 +78,7 @@ if(request()->get->method == "create-users-roles"){
         return response_json($data, $data->code);
     }
 
-    $user_id = request()->data->user_id; 
+    $user_id = request()->data->user_role_id; 
     $role_id = request()->data->role_id;
 
     $count = $db->get("users_roles", [], "user_id = $user_id and role_id = $role_id")->num_rows;
@@ -112,12 +112,12 @@ if(request()->get->method == "update-users-roles"){
 
     $validation = $validator->make((array) request()->data, 
     [
-        'user_id' => "required",
+        'user_role_id' => "required",
         'role_id' => "required",
         'status' => "required",
     ] , 
     [
-        'user_id:required' => customErrorMessage('کابر', 'required'),
+        'user_role_id:required' => customErrorMessage('کابر', 'required'),
         'role_id:required' => customErrorMessage('نقش', 'required'),
         'status:required' => customErrorMessage('وضعیت', 'required'),
     ]);
@@ -134,7 +134,7 @@ if(request()->get->method == "update-users-roles"){
         return response_json($data, $data->code);
     }
 
-    $user_id = request()->data->user_id; 
+    $user_id = request()->data->user_role_id; 
     $role_id = request()->data->role_id;
 
     $count = $db->get("users_roles", [], "user_id = $user_id and role_id = $role_id")->num_rows;
