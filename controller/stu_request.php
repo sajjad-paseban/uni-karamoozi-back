@@ -17,33 +17,190 @@ if (request()->get->method == "get-data") {
 
         $id = request()->data->id;
 
-        $res = $db->get('city', [], "id = $id");
+        $res = $db->get('stu_request', [], "id = $id");
+        $num_rows = $res->num_rows;
+        $requests = $res->fetch_object();
+        
 
-        $city_list = $res->fetch_object();
-
-        $city_list = withForObject($city_list, [
-            'province' => ['foreign_key' => 'province_id', 'primary_key' => 'id', 'model_name' => 'province']
+        $requests = withForObject($requests, [
+            'users' => ['foreign_key' => 'user_id', 'primary_key' => 'id', 'model_name' => 'user'],
+            'semester' => ['foreign_key' => 'semester_id', 'primary_key' => 'id', 'model_name' => 'semester'],
+            'uni_group' => ['foreign_key' => 'group_id', 'primary_key' => 'id', 'model_name' => 'group'],
+            'stu_semesters' => ['foreign_key' => 'stu_semester_id', 'primary_key' => 'id', 'model_name' => 'stu_semester'],
+            'intern_recruitment_application' => ['foreign_key' => 'ira_id', 'primary_key' => 'id', 'model_name' => 'ira']
         ]);
+        
+        $requests->ira = withForObject($requests->ira, [
+            'company_registration_application' => ['foreign_key' => 'cra_id', 'primary_key' => 'id', 'model_name' => 'cra']
+        ]);
+        
+        $requests = withForObject($requests, [
+            'users' => ['foreign_key' => 'teacher', 'primary_key' => 'id', 'model_name' => 'teacher_user'],
+        ]);
+
+        $requests->user = param_hidden($requests->user, ['password']);
+        $requests->teacher_user = param_hidden($requests->teacher_user, ['password']);
+        
     } else {
 
-        $res = $db->get('city', []);
+        $requests = $db->get('stu_request', []);
+        $num_rows = $res->num_rows;
+        $requests = $res->fetch_all(MYSQLI_ASSOC);
 
-        $city_list = $res->fetch_all(MYSQLI_ASSOC);
+        $requests = withForArray($requests, [
+            'users' => ['foreign_key' => 'user_id', 'primary_key' => 'id', 'model_name' => 'user'],
+            'semester' => ['foreign_key' => 'semester_id', 'primary_key' => 'id', 'model_name' => 'semester'],
+            'uni_group' => ['foreign_key' => 'group_id', 'primary_key' => 'id', 'model_name' => 'group'],
+            'stu_semesters' => ['foreign_key' => 'stu_semester_id', 'primary_key' => 'id', 'model_name' => 'stu_semester'],
+            'intern_recruitment_application' => ['foreign_key' => 'ira_id', 'primary_key' => 'id', 'model_name' => 'ira']
+        ]);
 
-        $city_list = withForArray($city_list, [
-            'province' => ['foreign_key' => 'province_id', 'primary_key' => 'id', 'model_name' => 'province']
+        $requests = withForArray($requests, [
+            'users' => ['foreign_key' => 'teacher', 'primary_key' => 'id', 'model_name' => 'teacher_user'],
         ]);
     }
 
+    $response = (object)[
+        'row' => [
+            'requests' => $num_rows > 0 ? $requests : null,
+        ],
+        'message' => 'لیست درخواست ها با موفقیت ارسال شذ',
+        'code' => 200
+    ];
 
+    return response_json($response, $response->code);
+}
 
+if (request()->get->method == "get-data-for-teacher") {
+    $validator = new Validator();
+
+    $validation = $validator->make(
+        (array) request()->data,
+        [
+            'user_id' => "required",
+        ],
+        [
+            'user_id:required' => customErrorMessage('آیدی کاربر', 'required'),
+        ]
+    );
+
+    $validation->validate();
+
+    if ($validation->fails()) {
+        $data = (object)[
+            'validation_failure' => $validation->fails(),
+            'errors' => $validation->errors()->firstOfAll(),
+            'code' => 400
+        ];
+
+        return response_json($data, $data->code);
+    }
+    $user_id = request()->data->user_id;
+    $semester_id = $db->get('semester', [], "is_active = 1")->fetch_object()->id;
+
+    $requests = $db->get('stu_request', [], "teacher = $user_id and status = 1 and semester_id = $semester_id");
+
+    $data = [];
+    if($requests->num_rows > 0){
+        $data = withForArray($requests->fetch_all(MYSQLI_ASSOC), [
+            'users' => ['foreign_key' => 'user_id', 'primary_key' => 'id', 'model_name' => 'user'],
+            'semester' => ['foreign_key' => 'semester_id', 'primary_key' => 'id', 'model_name' => 'semester'],
+            'uni_group' => ['foreign_key' => 'group_id', 'primary_key' => 'id', 'model_name' => 'group'],
+            'stu_semesters' => ['foreign_key' => 'stu_semester_id', 'primary_key' => 'id', 'model_name' => 'stu_semester'],
+            'intern_recruitment_application' => ['foreign_key' => 'ira_id', 'primary_key' => 'id', 'model_name' => 'ira']            
+        ]);
+        
+        $data = withForArray($data, [
+            'users' => ['foreign_key' => 'teacher', 'primary_key' => 'id', 'model_name' => 'teacher_user'],
+        ]);
+
+        foreach($data as $key => $item){
+            $data[$key]['ira'] = withForObject($data[$key]['ira'], [
+                'company_registration_application' => ['foreign_key' => 'cra_id', 'primary_key' => 'id', 'model_name' => 'cra']
+            ]);
+            
+            $data[$key]['type_desc'] = $data[$key]['type'] == 0 ? 'شرکت های مورد تایید دانشگاه' : 'سایر';
+            $data[$key]['user'] = param_hidden($data[$key]['user'], ['password']);
+            $data[$key]['teacher_user'] = param_hidden($data[$key]['teacher_user'], ['password']);
+            $data[$key]['teacher_user']->fullname = $data[$key]['teacher_user']->fname . ' ' .$data[$key]['teacher_user']->lname;
+            
+        }
+    }
+
+    $response = (object)[
+        'row' => [
+            'requests' => $requests->num_rows > 0 ? $data : null,
+        ],
+        'message' => 'اطلاعات درخواست با موفقیت ارسال شذ',
+        'code' => 200
+    ];
+
+    return response_json($response, $response->code);
+    
+}
+
+if (request()->get->method == "find-data-by-user-id") {
+    
+    $validator = new Validator();
+
+    $validation = $validator->make(
+        (array) request()->data,
+        [
+            'user_id' => "required",
+        ],
+        [
+            'user_id:required' => customErrorMessage('آیدی کاربر', 'required'),
+        ]
+    );
+
+    $validation->validate();
+
+    if ($validation->fails()) {
+        $data = (object)[
+            'validation_failure' => $validation->fails(),
+            'errors' => $validation->errors()->firstOfAll(),
+            'code' => 400
+        ];
+
+        return response_json($data, $data->code);
+    }
+
+    $user_id = request()->data->user_id;
+    $semester_id = $db->get('semester', [], "is_active = 1")->fetch_object()->id;
+    $group_id = $db->get('stu_semesters', [], "semester_id = $semester_id and user_id = $user_id and status = 1")->fetch_object()->group_id;
+    $requests = $db->get('stu_request', [], "semester_id = $semester_id and user_id = $user_id and group_id = $group_id and status = 1");
+
+    $num_rows = $requests->num_rows;
+
+    if($num_rows > 0){
+
+        $requests = withForObject($requests->fetch_object(), [
+            'users' => ['foreign_key' => 'user_id', 'primary_key' => 'id', 'model_name' => 'user'],
+            'semester' => ['foreign_key' => 'semester_id', 'primary_key' => 'id', 'model_name' => 'semester'],
+            'uni_group' => ['foreign_key' => 'group_id', 'primary_key' => 'id', 'model_name' => 'group'],
+            'stu_semesters' => ['foreign_key' => 'stu_semester_id', 'primary_key' => 'id', 'model_name' => 'stu_semester'],
+            'intern_recruitment_application' => ['foreign_key' => 'ira_id', 'primary_key' => 'id', 'model_name' => 'ira']
+        ]);
+        
+        $requests->ira = withForObject($requests->ira, [
+            'company_registration_application' => ['foreign_key' => 'cra_id', 'primary_key' => 'id', 'model_name' => 'cra']
+        ]);
+        
+        $requests = withForObject($requests, [
+            'users' => ['foreign_key' => 'teacher', 'primary_key' => 'id', 'model_name' => 'teacher_user'],
+        ]);
+
+        $requests->user = param_hidden($requests->user, ['password']);
+        $requests->teacher_user = param_hidden($requests->teacher_user, ['password']);
+    
+    }
 
 
     $response = (object)[
         'row' => [
-            'city_list' => $city_list,
+            'requests' => $num_rows > 0 ? $requests : null,
         ],
-        'message' => 'لیست شهر ها با موفقیت ارسال شذ',
+        'message' => 'اطلاعات درخواست با موفقیت ارسال شذ',
         'code' => 200
     ];
 
@@ -80,10 +237,12 @@ if (request()->get->method == "user-has-access") {
     $semesters = implode(array_column($semesters, 'id'));
     $user_id = request()->data->user_id;
     $stu_semester = $db->get('stu_semesters', [], "status = 1 and user_id = $user_id and semester_id in($semesters)");
-    
+    $data = $stu_semester->fetch_object();
     $response = (object)[
         'row' => [
             'has_access' => $stu_semester->num_rows > 0 ? true : false,
+            'stu_semester_id' => $stu_semester->num_rows > 0 ? $data->id : null,
+            'group_id' => $stu_semester->num_rows > 0 ? $data->group_id : null
         ],
         'message' => 'لیست نیمسال های تحصیلی فعال با موفقیت ارسال شد',
         'code' => 200
@@ -140,6 +299,12 @@ if (request()->get->method == "get-companies") {
     [
         'company_registration_application' => ['foreign_key' => 'cra_id', 'primary_key' => 'id', 'model_name' => 'cra'],
     ]);
+
+    foreach($company as $key => $item){
+        $id = $item['id'];
+        $num_rows = $db->get('stu_request', [], "ira_id = $id and status = 1 and semester_id = $semester_id")->num_rows;
+        $company[$key]['capacity'] = $company[$key]['capacity'] - $num_rows; 
+    }
 
     $response = (object)[
         'row' => [
@@ -199,20 +364,16 @@ if (request()->get->method == "get-teachers") {
     return response_json($response, $response->code);
 }
 
-if (request()->get->method == "create-city") {
+if (request()->get->method == "create-request") {
     $validator = new Validator();
 
     $validation = $validator->make(
         (array) request()->data,
         [
-            'title' => "required",
-            'province_id' => "required",
-            'status' => "required",
+            'user_id' => "required",
         ],
         [
-            'title:required' => customErrorMessage('عنوان', 'required'),
-            'province_id:required' => customErrorMessage('استان', 'required'),
-            'status:required' => customErrorMessage('وضعیت', 'required'),
+            'user_id:required' => customErrorMessage('آیدی کاربر', 'required'),
         ]
     );
 
@@ -227,19 +388,125 @@ if (request()->get->method == "create-city") {
 
         return response_json($data, $data->code);
     }
+    
+    $code = request()->data->code ?? null;
+    $semester_id = request()->data->semester_id ?? null;
+    $group_id = request()->data->group_id ?? null;
+    $stu_semester_id = request()->data->stu_semester_id ?? null;
+    $teacher = request()->data->teacher ?? null;
+    $type = request()->data->type ?? null;
+    $ira_id = request()->data->ira_id ?? null;
+    $intern_name = request()->data->intern_name ?? null;
+    $intern_phone = request()->data->intern_phone ?? null;
+    $intern_telephone = request()->data->intern_telephone ?? null;
+    $place_name = request()->data->place_name ?? null;
+    $place_telephone = request()->data->place_telephone ?? null;
+    $supervisor_name = request()->data->supervisor_name ?? null;
+    $supervisor_phone = request()->data->supervisor_phone ?? null;
+    $from_date = request()->data->from_date ?? null;
+    $to_date = request()->data->to_date ?? null;
+    $sat = request()->data->sat ?? null;
+    $sat_from = request()->data->sat_from ?? null;
+    $sat_to = request()->data->sat_to ?? null;
+    $sun = request()->data->sun ?? null;
+    $sun_from = request()->data->sun_from ?? null;
+    $sun_to = request()->data->sun_to ?? null;
+    $mon = request()->data->mon ?? null;
+    $mon_from = request()->data->mon_from ?? null;
+    $mon_to = request()->data->mon_to ?? null;
+    $tue = request()->data->tue ?? null;
+    $tue_from = request()->data->tue_from ?? null;
+    $tue_to = request()->data->tue_to ?? null;
+    $wed = request()->data->wed ?? null;
+    $wed_from = request()->data->wed_from ?? null;
+    $wed_to = request()->data->wed_to ?? null;
+    $thu = request()->data->thu ?? null;
+    $thu_from = request()->data->thu_from ?? null;
+    $thu_to = request()->data->thu_to ?? null;
+    $description = request()->data->description ?? null;
 
-    $stmt = $db->command()->prepare("INSERT INTO city(title ,province_id ,status) VALUES(?,?,?)");
+    $stmt = $db->command()->prepare("INSERT INTO stu_request(
+        code,
+        user_id,
+        semester_id,
+        group_id,
+        stu_semester_id,
+        teacher,
+        type,
+        ira_id,
+        intern_name,
+        intern_phone,
+        intern_telephone,
+        from_date,
+        to_date,
+        place_name,
+        place_telephone,
+        supervisor_name,
+        supervisor_phone,
+        sat,
+        sat_from,
+        sat_to,
+        sun,
+        sun_from,
+        sun_to,
+        mon,
+        mon_from,
+        mon_to,
+        tue,
+        tue_from,
+        tue_to,
+        wed,
+        wed_from,
+        wed_to,
+        thu,
+        thu_from,
+        thu_to,
+        description
+        ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
     $stmt->bind_param(
-        'sii',
-        request()->data->title,
-        request()->data->province_id,
-        request()->data->status,
+        'siiiiiiisssssssssississississississs',
+        $code,
+        request()->data->user_id,
+        $semester_id,
+        $group_id,
+        $stu_semester_id,
+        $teacher,
+        $type,
+        $ira_id,
+        $intern_name,
+        $intern_phone,
+        $intern_telephone,
+        $from_date,
+        $to_date,
+        $place_name,
+        $place_telephone,
+        $supervisor_name,
+        $supervisor_phone,
+        $sat,
+        $sat_from,
+        $sat_to,
+        $sun,
+        $sun_from,
+        $sun_to,
+        $mon,
+        $mon_from,
+        $mon_to,
+        $tue,
+        $tue_from,
+        $tue_to,
+        $wed,
+        $wed_from,
+        $wed_to,
+        $thu,
+        $thu_from,
+        $thu_to,
+        $description,
     );
 
     $res = $stmt->execute();
 
     $response = (object)[
-        'message' => ($res) ? 'شهر با موفقیت اضافه گردید' : 'عملیات با خطا مواجه گردید',
+        'message' => ($res) ? 'درخواست شما با موفقیت ثبت گردید' : 'عملیات با خطا مواجه گردید',
         'code' => ($res) ? 200 : 400
     ];
 
@@ -294,16 +561,17 @@ if (request()->get->method == "update-city") {
     return response_json($response, $response->code);
 }
 
-if (request()->get->method == "delete-city") {
+if (request()->get->method == "delete-request") {
+        
     $validator = new Validator();
 
     $validation = $validator->make(
         (array) request()->data,
         [
-            'ids' => "required",
+            'id' => "required",
         ],
         [
-            'ids:required' => customErrorMessage('آیدی', 'required'),
+            'id:required' => customErrorMessage('آیدی', 'required'),
         ]
     );
 
@@ -318,14 +586,35 @@ if (request()->get->method == "delete-city") {
 
         return response_json($data, $data->code);
     }
+    
+    $id = request()->data->id;
+    
+    $requests = $db->get('stu_request', [], "id = $id and status = 1");
 
-    $ids = request()->data->ids;
-    $res = $db->query("DELETE FROM city where id in($ids)");
+    if($requests->num_rows > 0){
+        $data = $requests->fetch_object();
+        if(($data->teacher_confirm != 1 || $data->teacher_confirm != null) && ($data->manager_confirm != 0 || $data->manager_confirm != null)){
+            $db->query("DELETE FROM stu_request WHERE id = $id");
+        
+            $response = (object)[
+                'message' => 'درخواست شما با موفقیت حذف گردید',
+                'code' => 200
+            ];                
+        }else{
+            $response = (object)[
+                'message' => 'درخواست شما توسط استاد یا مدیر گروه رد نشده است',
+                'code' => 400
+            ];    
+        }
+        
 
-    $response = (object)[
-        'message' => ($res) ? 'شهر با موفقیت حذف گردید' : 'عملیات با خطا مواجه گردید',
-        'code' => ($res) ? 200 : 400
-    ];
+
+    }else{
+        $response = (object)[
+            'message' => 'درحال حاضر هنوز درخواستی ثبت نکرده اید',
+            'code' => 400
+        ];    
+    }
 
     return response_json($response, $response->code);
 }
