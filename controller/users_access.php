@@ -50,11 +50,11 @@ if(request()->get->method == "create-user-access"){
 
     $validation = $validator->make((array) request()->data, 
     [
-        'user_id' => "required",
+        'userid' => "required",
         'menu_id' => "required",
     ] , 
     [
-        'user_id:required' => customErrorMessage('کاربر', 'required'),
+        'userid:required' => customErrorMessage('کاربر', 'required'),
         'menu_id:required' => customErrorMessage('منو', 'required'),
     ]);
 
@@ -70,7 +70,7 @@ if(request()->get->method == "create-user-access"){
         return response_json($data, $data->code);
     }
 
-    $user_id = request()->data->user_id;
+    $user_id = request()->data->userid;
     $menu_id = request()->data->menu_id;
     
     $res = $db->get('users_access', [], "user_id = $user_id and menu_id = $menu_id");
@@ -78,7 +78,7 @@ if(request()->get->method == "create-user-access"){
         $stmt = $db->command()->prepare("INSERT INTO users_access(user_id, menu_id, status) VALUES(?,?,?)");
         $stmt->bind_param(
             'iii',
-            request()->data->user_id,
+            request()->data->userid,
             request()->data->menu_id,
             request()->data->status,
         );
@@ -104,11 +104,11 @@ if(request()->get->method == "update-user-access"){
 
     $validation = $validator->make((array) request()->data, 
     [
-        'user_id' => "required",
+        'userid' => "required",
         'menu_id' => "required",
     ] , 
     [
-        'user_id:required' => customErrorMessage('کاربر', 'required'),
+        'userid:required' => customErrorMessage('کاربر', 'required'),
         'menu_id:required' => customErrorMessage('منو', 'required'),
     ]);
 
@@ -124,7 +124,7 @@ if(request()->get->method == "update-user-access"){
         return response_json($data, $data->code);
     }
     
-    $user_id = request()->data->user_id;
+    $user_id = request()->data->userid;
     $menu_id = request()->data->menu_id;
     
     $res = $db->get('users_access', [], "user_id = $user_id and menu_id = $menu_id");
@@ -134,7 +134,7 @@ if(request()->get->method == "update-user-access"){
         $stmt = $db->command()->prepare("UPDATE users_access SET user_id = ?, menu_id = ?, status = ? WHERE id = ?");
         $stmt->bind_param(
             'iiii',
-            request()->data->user_id,
+            request()->data->userid,
             request()->data->menu_id,
             request()->data->status,
             request()->data->id

@@ -2,6 +2,7 @@
 CREATE Table intern_recruitment_application(
     id int PRIMARY KEY AUTO_INCREMENT,
     code VARCHAR(255) NOT NULL UNIQUE,
+    semester_id INT NOT NULL,
     user_id INT NOT NULL,
     cra_id INT NOT NULL,
     group_id INT NOT NULL,
@@ -12,6 +13,7 @@ CREATE Table intern_recruitment_application(
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP NULL,
     created_by int NULL,
     updated_by int NULL,
+    Foreign Key (semester_id) REFERENCES semester(id),
     Foreign Key (user_id) REFERENCES users(id),
     Foreign Key (cra_id) REFERENCES company_registration_application(id),
     Foreign Key (group_id) REFERENCES uni_group(id)

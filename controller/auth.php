@@ -26,9 +26,23 @@ if(request()->get->method == "register"){
         );
     
         $stmt->execute();
+    
         
+        $us_id = $stmt->insert_id;
+        $ro_id = env('DEFAULT_ROLE');
+        $active = true;
+        $stmt = $db->command()->prepare("INSERT INTO users_roles(role_id, user_id, default_role) VALUES(?,?,?)");
+        $stmt->bind_param(
+            'iii', 
+            $ro_id,
+            $us_id,
+            $active
+        );  
+        $stmt->execute();
+
+
         $response = (object) [
-            'user_id' => $stmt->insert_id,
+            'user_id' => $us_id,
             'message' => "عملیات با موفقیت انجام شد",
             'code' => 201
         ];
@@ -301,4 +315,85 @@ if(request()->get->method == "change-password"){
     }
     
     return response_json($response, $response->code);
+}
+
+if(request()->get->method == "check-user-has-access"){
+    
+    $validator = new Validator();
+    
+    $validation = $validator->make((array) request()->data, 
+    [
+        'user_id' => "required",
+        'role_id' => "required",
+        'path' => 'required'
+    ] , 
+    [
+        'user_id:required' => customErrorMessage('آیدی کاربر', 'required'),
+        'role_id:required' => customErrorMessage('آیدی نقش', 'required'),
+        "path:required" => 'مسیر می بایست ارسال شود',
+    ]);
+
+    $validation->validate();
+
+    if($validation->fails()){
+        $data = (object)[
+            'validation_failure' => $validation->fails(),
+            'errors' => $validation->errors()->firstOfAll(),
+            'code' => 400
+        ];
+
+        return response_json($data, $data->code);
+    }
+    
+    $user_id = request()->data->user_id;
+    $role_id = request()->data->role_id;
+    
+    $user_res = $db->get('users_access', [], "user_id = $user_id and status = 1");
+    $role_res = $db->get('roles_access', [], "role_id = $role_id and status = 1");
+    
+    if($user_res->num_rows > 0 || $role_res->num_rows > 0){
+        $user_list = withForArray($user_res->fetch_all(MYSQLI_ASSOC),
+            [
+                "users" => ['primary_key' => 'id', 'foreign_key' => 'user_id', 'model_name' => 'user'],
+                'menu' => ['primary_key' => 'id', 'foreign_key' => 'menu_id', 'model_name' => 'menu']
+            ]
+        );
+        $role_list = withForArray($role_res->fetch_all(MYSQLI_ASSOC), 
+            [
+                "roles" => ['primary_key' => 'id', 'foreign_key' => 'role_id', 'model_name' => 'role'],
+                'menu' => ['primary_key' => 'id', 'foreign_key' => 'menu_id', 'model_name' => 'menu']
+            ]
+        );
+        
+        $all = array_merge($user_list, $role_list);
+
+        $flag = false;
+        foreach($all as $item){
+            $item = (object) $item;
+
+            if($item->menu->status == 1 && str_contains(request()->data->path, $item->menu->key_param)){
+                $flag = true;
+            }
+        }
+
+        $response = (object)[
+            'res' => $flag,
+            'message' => ($flag) ? 'دسترسی وجود دارد' : 'دسترسی وجود ندارد',
+            'code' => 200
+        ];
+
+    }else{
+
+        $response = (object)[
+            'row' => [],
+            'message' => 'عملیات با خطا مواجه گردید',
+            'code' => 400
+        ];
+        
+    }
+
+
+    return response_json($response, $response->code);
+
+    
 }

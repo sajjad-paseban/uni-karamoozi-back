@@ -24,9 +24,7 @@ if(request()->get->method == "get-data"){
             'users' => ['foreign_key' => 'user_id', 'primary_key' => 'id', 'model_name' => 'user']
         ]);
 
-        foreach($item as $key => $row){
-            $item[$key]['user'] = param_hidden($row['user'], ['password']);
-        }
+        $item->user = param_hidden($item->user, ['password']);
 
         $company_registration_application_list = $item;
 

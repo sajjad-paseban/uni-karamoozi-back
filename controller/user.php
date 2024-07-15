@@ -247,11 +247,19 @@ if(request()->get->method == "create-user"){
         $stmt->execute();
  
         $us_id = $stmt->insert_id;
-        $ro_id = env('DEFAULT_ROEL');
-        $db->query("INSERT INTO users_roles(user_id, role_id, default) VALUES($$us_id, $ro_id, 1)");
+        $ro_id = env('DEFAULT_ROLE');
+        $active = true;
+        $stmt = $db->command()->prepare("INSERT INTO users_roles(role_id, user_id, default_role) VALUES(?,?,?)");
+        $stmt->bind_param(
+            'iii', 
+            $ro_id,
+            $us_id,
+            $active
+        );  
+        $stmt->execute();
         
         $response = (object) [
-            'user_id' => $stmt->insert_id,
+            'user_id' => $us_id,
             'message' => "عملیات با موفقیت انجام شد",
             'code' => 201
         ];
@@ -379,6 +387,13 @@ if(request()->get->method == "delete-user"){
     }
     
     $ids = request()->data->ids;
+    $db->query("DELETE FROM users_groups WHERE user_id IN($ids)");
+    $db->query("DELETE FROM users_access WHERE user_id IN($ids)");
+    $db->query("DELETE FROM users_roles WHERE user_id IN($ids)");
+    $db->query("DELETE FROM auth_token WHERE user_id IN($ids)");
+    $db->query("DELETE FROM company_registration_application WHERE user_id IN($ids)");
+    $db->query("DELETE FROM intern_recruitment_application WHERE user_id IN($ids)");
+    $db->query("DELETE FROM stu_semesters WHERE user_id IN($ids)");
     $res = $db->query("DELETE FROM users where id in($ids)");   
     
     $response = (object)[
@@ -470,8 +485,8 @@ if(request()->get->method == "get-user-access"){
     $user_id = request()->data->user_id;
     $role_id = request()->data->role_id;
     
-    $user_res = $db->get('users_access', [], "user_id = $user_id");
-    $role_res = $db->get('roles_access', [], "role_id = $role_id");
+    $user_res = $db->get('users_access', [], "user_id = $user_id and status = 1");
+    $role_res = $db->get('roles_access', [], "role_id = $role_id and status = 1");
     
     if($user_res->num_rows > 0 || $role_res->num_rows > 0){
         $user_list = withForArray($user_res->fetch_all(MYSQLI_ASSOC),

@@ -116,13 +116,13 @@ if(request()->get->method == "create-user-group"){
     $validation = $validator->make((array) request()->data, 
     [
         'role_id' => "required",
-        'user_id' => "required",
+        'userid' => "required",
         'group_id' => "required",
         'status' => "required",
     ] , 
     [
         'role_id:required' => customErrorMessage('نقش', 'required'),
-        'user_id:required' => customErrorMessage('نام کاربر', 'required'),
+        'userid:required' => customErrorMessage('نام کاربر', 'required'),
         'group_id:required' => customErrorMessage('نام گروه', 'required'),
         'status:required' => customErrorMessage('وضعیت', 'required'),
     ]);
@@ -142,14 +142,14 @@ if(request()->get->method == "create-user-group"){
     $uq = $db->get(
         'users_groups',
          [],
-        "role_id = ". request()->data->role_id . " and user_id = ".request()->data->user_id. ' and group_id = '. request()->data->group_id
+        "role_id = ". request()->data->role_id . " and user_id = ".request()->data->userid. ' and group_id = '. request()->data->group_id
     );
     if($uq->num_rows == 0){
         $stmt = $db->command()->prepare("INSERT INTO users_groups(role_id, user_id, group_id, status) VALUES(?,?,?,?)");
         $stmt->bind_param(
             'iiii',
             request()->data->role_id,
-            request()->data->user_id,
+            request()->data->userid,
             request()->data->group_id,
             request()->data->status,
         );
@@ -173,13 +173,13 @@ if(request()->get->method == "update-user-group"){
     $validation = $validator->make((array) request()->data, 
     [
         'role_id' => "required",
-        'user_id' => "required",
+        'userid' => "required",
         'group_id' => "required",
         'status' => "required",
     ] , 
     [
         'role_id:required' => customErrorMessage('نقش', 'required'),
-        'user_id:required' => customErrorMessage('نام کاربر', 'required'),
+        'userid:required' => customErrorMessage('نام کاربر', 'required'),
         'group_id:required' => customErrorMessage('نام گروه', 'required'),
         'status:required' => customErrorMessage('وضعیت', 'required'),
     ]);
@@ -200,7 +200,7 @@ if(request()->get->method == "update-user-group"){
     $uq = $db->get(
         'users_groups',
          [],
-        "role_id = ". request()->data->role_id . " and user_id = ".request()->data->user_id. ' and group_id = '. request()->data->group_id
+        "role_id = ". request()->data->role_id . " and user_id = ".request()->data->userid. ' and group_id = '. request()->data->group_id
     );
     if($uq->num_rows == 0){
         
@@ -208,7 +208,7 @@ if(request()->get->method == "update-user-group"){
         $stmt->bind_param(
             'iiiii',
             request()->data->role_id,
-            request()->data->user_id,
+            request()->data->userid,
             request()->data->group_id,
             request()->data->status,
             request()->data->id

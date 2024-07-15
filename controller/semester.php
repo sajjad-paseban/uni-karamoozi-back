@@ -118,6 +118,17 @@ if(request()->get->method == "update-semester"){
         return response_json($data, $data->code);
     }
 
+    $semester_id = request()->data->id;
+    
+    if(request()->data->is_active == 1){
+        $db->query("UPDATE semester SET is_active = 0");
+        $db->query("UPDATE stu_semesters SET status = 1 WHERE semester_id = $semester_id");
+    }
+
+    if(request()->data->is_active == 0){
+        $db->query("UPDATE stu_semesters SET status = 0 WHERE semester_id = $semester_id");
+    }
+    
     $stmt = $db->command()->prepare("UPDATE semester SET code = ?, name = ?, is_active = ? WHERE id = ?");
     $stmt->bind_param(
         'isii',
@@ -161,6 +172,8 @@ if(request()->get->method == "delete-semester"){
     }
     
     $ids = request()->data->ids;
+    
+    $db->query("DELETE FROM stu_semesters WHERE semester_id in($ids)");
     $res = $db->query("DELETE FROM semester where id in($ids)");   
     
     $response = (object)[
