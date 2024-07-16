@@ -139,6 +139,74 @@ if (request()->get->method == "get-data-for-teacher") {
     
 }
 
+if (request()->get->method == "get-data-for-manager") {
+    $validator = new Validator();
+
+    $validation = $validator->make(
+        (array) request()->data,
+        [
+            'user_id' => "required",
+        ],
+        [
+            'user_id:required' => customErrorMessage('آیدی کاربر', 'required'),
+        ]
+    );
+
+    $validation->validate();
+
+    if ($validation->fails()) {
+        $data = (object)[
+            'validation_failure' => $validation->fails(),
+            'errors' => $validation->errors()->firstOfAll(),
+            'code' => 400
+        ];
+
+        return response_json($data, $data->code);
+    }
+    $user_id = request()->data->user_id;
+    $semester_id = $db->get('semester', [], "is_active = 1")->fetch_object()->id;
+
+    $requests = $db->get('stu_request', [], "teacher = $user_id and status = 1 and semester_id = $semester_id and teacher_confirm is not null");
+
+    $data = [];
+    if($requests->num_rows > 0){
+        $data = withForArray($requests->fetch_all(MYSQLI_ASSOC), [
+            'users' => ['foreign_key' => 'user_id', 'primary_key' => 'id', 'model_name' => 'user'],
+            'semester' => ['foreign_key' => 'semester_id', 'primary_key' => 'id', 'model_name' => 'semester'],
+            'uni_group' => ['foreign_key' => 'group_id', 'primary_key' => 'id', 'model_name' => 'group'],
+            'stu_semesters' => ['foreign_key' => 'stu_semester_id', 'primary_key' => 'id', 'model_name' => 'stu_semester'],
+            'intern_recruitment_application' => ['foreign_key' => 'ira_id', 'primary_key' => 'id', 'model_name' => 'ira']            
+        ]);
+        
+        $data = withForArray($data, [
+            'users' => ['foreign_key' => 'teacher', 'primary_key' => 'id', 'model_name' => 'teacher_user'],
+        ]);
+
+        foreach($data as $key => $item){
+            $data[$key]['ira'] = withForObject($data[$key]['ira'], [
+                'company_registration_application' => ['foreign_key' => 'cra_id', 'primary_key' => 'id', 'model_name' => 'cra']
+            ]);
+            
+            $data[$key]['type_desc'] = $data[$key]['type'] == 0 ? 'شرکت های مورد تایید دانشگاه' : 'سایر';
+            $data[$key]['user'] = param_hidden($data[$key]['user'], ['password']);
+            $data[$key]['teacher_user'] = param_hidden($data[$key]['teacher_user'], ['password']);
+            $data[$key]['teacher_user']->fullname = $data[$key]['teacher_user']->fname . ' ' .$data[$key]['teacher_user']->lname;
+            
+        }
+    }
+
+    $response = (object)[
+        'row' => [
+            'requests' => $requests->num_rows > 0 ? $data : null,
+        ],
+        'message' => 'اطلاعات درخواست با موفقیت ارسال شذ',
+        'code' => 200
+    ];
+
+    return response_json($response, $response->code);
+    
+}
+
 if (request()->get->method == "find-data-by-user-id") {
     
     $validator = new Validator();
@@ -401,6 +469,7 @@ if (request()->get->method == "create-request") {
     $intern_telephone = request()->data->intern_telephone ?? null;
     $place_name = request()->data->place_name ?? null;
     $place_telephone = request()->data->place_telephone ?? null;
+    $place_address = request()->data->place_address ?? null;
     $supervisor_name = request()->data->supervisor_name ?? null;
     $supervisor_phone = request()->data->supervisor_phone ?? null;
     $from_date = request()->data->from_date ?? null;
@@ -441,6 +510,7 @@ if (request()->get->method == "create-request") {
         to_date,
         place_name,
         place_telephone,
+        place_address,
         supervisor_name,
         supervisor_phone,
         sat,
@@ -462,9 +532,9 @@ if (request()->get->method == "create-request") {
         thu_from,
         thu_to,
         description
-        ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+        ) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
     $stmt->bind_param(
-        'siiiiiiisssssssssississississississs',
+        'siiiiiiissssssssssississississississs',
         $code,
         request()->data->user_id,
         $semester_id,
@@ -480,6 +550,7 @@ if (request()->get->method == "create-request") {
         $to_date,
         $place_name,
         $place_telephone,
+        $place_address,
         $supervisor_name,
         $supervisor_phone,
         $sat,
