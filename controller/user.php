@@ -130,7 +130,7 @@ if(request()->get->method == "update-user-info"){
         "UPDATE users SET
         fname = '$fname',
         lname = '$lname',
-        birthdate = $birthdate,
+        birthdate = '$birthdate',
         phone = '$phone' WHERE id = $user_id"
     );
 
@@ -391,9 +391,11 @@ if(request()->get->method == "delete-user"){
     $db->query("DELETE FROM users_access WHERE user_id IN($ids)");
     $db->query("DELETE FROM users_roles WHERE user_id IN($ids)");
     $db->query("DELETE FROM auth_token WHERE user_id IN($ids)");
-    $db->query("DELETE FROM company_registration_application WHERE user_id IN($ids)");
     $db->query("DELETE FROM intern_recruitment_application WHERE user_id IN($ids)");
+    $db->query("DELETE FROM company_registration_application WHERE user_id IN($ids)");
     $db->query("DELETE FROM stu_semesters WHERE user_id IN($ids)");
+    $db->query("DELETE FROM stu_request WHERE user_id IN($ids)");
+    $db->query("DELETE FROM stu_request WHERE teacher IN($ids)");
     $res = $db->query("DELETE FROM users where id in($ids)");   
     
     $response = (object)[

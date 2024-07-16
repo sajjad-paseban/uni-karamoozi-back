@@ -159,6 +159,11 @@ if(request()->get->method == "delete-uni-group"){
     }
     
     $ids = request()->data->ids;
+    
+    $db->query("DELETE FROM users_groups WHERE group_id IN($ids)");
+    $db->query("DELETE FROM intern_recruitment_application WHERE group_id IN($ids)");
+    $db->query("DELETE FROM stu_request WHERE group_id IN($ids)");
+    $db->query("DELETE FROM stu_semesters WHERE group_id IN($ids)");
     $res = $db->query("DELETE FROM uni_group where id in($ids)");   
     
     $response = (object)[

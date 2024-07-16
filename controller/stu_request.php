@@ -165,8 +165,9 @@ if (request()->get->method == "get-data-for-manager") {
     }
     $user_id = request()->data->user_id;
     $semester_id = $db->get('semester', [], "is_active = 1")->fetch_object()->id;
-
-    $requests = $db->get('stu_request', [], "teacher = $user_id and status = 1 and semester_id = $semester_id and teacher_confirm is not null");
+    $group_ids = $db->get('users_groups', [], "status = 1 and role_id = 6 and user_id = $user_id")->fetch_all(MYSQLI_ASSOC);
+    $group_ids = implode(',' ,array_column($group_ids, 'group_id'));
+    $requests = $db->get('stu_request', [], "group_id in($group_ids) and status = 1 and semester_id = $semester_id and teacher_confirm is not null");
 
     $data = [];
     if($requests->num_rows > 0){
@@ -302,7 +303,7 @@ if (request()->get->method == "user-has-access") {
     }
     
     $semesters = $db->get('semester', [], "is_active = 1")->fetch_all(MYSQLI_ASSOC);
-    $semesters = implode(array_column($semesters, 'id'));
+    $semesters = implode(',',array_column($semesters, 'id'));
     $user_id = request()->data->user_id;
     $stu_semester = $db->get('stu_semesters', [], "status = 1 and user_id = $user_id and semester_id in($semesters)");
     $data = $stu_semester->fetch_object();
@@ -361,7 +362,7 @@ if (request()->get->method == "get-companies") {
     $semester_id = $db->get('semester', [], "is_active = 1")->fetch_object()->id;
     $user_id = request()->data->user_id;
     $group_ids = $db->get('stu_semesters', [], "status = 1 and semester_id = $semester_id and user_id = $user_id")->fetch_all(MYSQLI_ASSOC);
-    $group_ids = implode(array_column($group_ids, 'group_id'));
+    $group_ids = implode(',',array_column($group_ids, 'group_id'));
     $company = $db->get('intern_recruitment_application',[], "group_id in($group_ids) and semester_id = $semester_id")->fetch_all(MYSQLI_ASSOC);
     $company = withForArray($company, 
     [
@@ -413,7 +414,7 @@ if (request()->get->method == "get-teachers") {
     $semester_id = $db->get('semester', [], "is_active = 1")->fetch_object()->id;
     $user_id = request()->data->user_id;
     $group_ids = $db->get('stu_semesters', [], "status = 1 and semester_id = $semester_id and user_id = $user_id")->fetch_all(MYSQLI_ASSOC);
-    $group_ids = implode(array_column($group_ids, 'group_id'));
+    $group_ids = implode(',', array_column($group_ids, 'group_id'));
     $teacher_role = env("TEACHER_ROLE");
     $teachers = $db->get('users_groups', [], "group_id in($group_ids) and status = 1 and role_id = $teacher_role")->fetch_all(MYSQLI_ASSOC);
     $teachers = withForArray($teachers,
@@ -688,4 +689,216 @@ if (request()->get->method == "delete-request") {
     }
 
     return response_json($response, $response->code);
+}
+
+if (request()->get->method == "confirm-by-manager") {
+    $validator = new Validator();
+
+    $validation = $validator->make(
+        (array) request()->data,
+        [
+            'id' => "required",
+        ],
+        [
+            'id:required' => customErrorMessage('آیدی', 'required'),
+        ]
+    );
+
+    $validation->validate();
+
+    if ($validation->fails()) {
+        $data = (object)[
+            'validation_failure' => $validation->fails(),
+            'errors' => $validation->errors()->firstOfAll(),
+            'code' => 400
+        ];
+
+        return response_json($data, $data->code);
+    }
+
+    $id = request()->data->id;
+    $res = $db->query("UPDATE stu_request SET teacher_confirm = 1, manager_confirm = 1 WHERE id = $id");
+
+    $response = (object)[
+        'message' => $res ? 'عملیات با موفقیت انجام شد' : 'عملیات با خطا مواجه شد',
+        'code' => $res ? 200 : 400
+    ];                
+
+    return response_json($response, $response->code);
+
+}
+
+if (request()->get->method == "confirm-by-teacher") {
+    $validator = new Validator();
+
+    $validation = $validator->make(
+        (array) request()->data,
+        [
+            'id' => "required",
+        ],
+        [
+            'id:required' => customErrorMessage('آیدی', 'required'),
+        ]
+    );
+
+    $validation->validate();
+
+    if ($validation->fails()) {
+        $data = (object)[
+            'validation_failure' => $validation->fails(),
+            'errors' => $validation->errors()->firstOfAll(),
+            'code' => 400
+        ];
+
+        return response_json($data, $data->code);
+    }
+
+    $id = request()->data->id;
+
+    $res = $db->query("UPDATE stu_request SET teacher_confirm = 1 WHERE id = $id");
+
+    $response = (object)[
+        'message' => $res ? 'عملیات با موفقیت انجام شد' : 'عملیات با خطا مواجه شد',
+        'code' => $res ? 200 : 400
+    ];                
+
+    return response_json($response, $response->code);
+
+}
+
+if (request()->get->method == "reject-by-manager") {
+    $validator = new Validator();
+
+    $validation = $validator->make(
+        (array) request()->data,
+        [
+            'id' => "required",
+            'description' => "required",
+        ],
+        [
+            'id:required' => customErrorMessage('آیدی', 'required'),
+            'description:required' => customErrorMessage('توضیحات', 'required'),
+        ]
+    );
+
+    $validation->validate();
+
+    if ($validation->fails()) {
+        $data = (object)[
+            'validation_failure' => $validation->fails(),
+            'errors' => $validation->errors()->firstOfAll(),
+            'code' => 400
+        ];
+
+        return response_json($data, $data->code);
+    }
+
+    $id = request()->data->id;
+    $description = request()->data->description;
+    $res = $db->query("UPDATE stu_request SET teacher_confirm = 0, teacher_description = '$description', manager_confirm = 0, manager_description = '$description' WHERE id = $id");
+
+    $response = (object)[
+        'message' => $res ? 'عملیات با موفقیت انجام شد' : 'عملیات با خطا مواجه شد',
+        'code' => $res ? 200 : 400
+    ];                
+
+    return response_json($response, $response->code);
+
+}
+
+if (request()->get->method == "reject-by-teacher") {
+    $validator = new Validator();
+
+    $validation = $validator->make(
+        (array) request()->data,
+        [
+            'id' => "required",
+            'description' => "required",
+        ],
+        [
+            'id:required' => customErrorMessage('آیدی', 'required'),
+            'description:required' => customErrorMessage('توضیحات', 'required'),
+        ]
+    );
+
+    $validation->validate();
+
+    if ($validation->fails()) {
+        $data = (object)[
+            'validation_failure' => $validation->fails(),
+            'errors' => $validation->errors()->firstOfAll(),
+            'code' => 400
+        ];
+
+        return response_json($data, $data->code);
+    }
+
+    $id = request()->data->id;
+    $description = request()->data->description;
+    
+    $res = $db->query("UPDATE stu_request SET teacher_confirm = 0, teacher_description = '$description' WHERE id = $id");
+
+    $response = (object)[
+        'message' => $res ? 'عملیات با موفقیت انجام شد' : 'عملیات با خطا مواجه شد',
+        'code' => $res ? 200 : 400
+    ];                
+
+    return response_json($response, $response->code);
+
+}
+
+if (request()->get->method == "get-my-students") {
+    $validator = new Validator();
+
+    $validation = $validator->make(
+        (array) request()->data,
+        [
+            'user_id' => "required",
+        ],
+        [
+            'user_id:required' => customErrorMessage('آیدی کاربر', 'required'),
+        ]
+    );
+
+    $validation->validate();
+
+    if ($validation->fails()) {
+        $data = (object)[
+            'validation_failure' => $validation->fails(),
+            'errors' => $validation->errors()->firstOfAll(),
+            'code' => 400
+        ];
+
+        return response_json($data, $data->code);
+    }
+    
+    $user_id = request()->data->user_id;
+    $semester_ids = implode(',', array_column($db->get('semester', [], "is_active = 1")->fetch_all(MYSQLI_ASSOC),'id')) ?? null;
+    $ira_ids = implode(',', array_column($db->get('intern_recruitment_application', [], "semester_id in($semester_ids) and status = 1 and user_id = $user_id")->fetch_all(MYSQLI_ASSOC), 'id')) ?? null;
+    $list = $db->get('stu_request', [], "status = 1 and ira_id in($ira_ids)");
+    $num_rows = $list->num_rows;
+    if($num_rows > 0){
+        $list = withForArray($list->fetch_all(MYSQLI_ASSOC), [
+            'users' => ['foreign_key' => 'user_id', 'primary_key' => 'id', 'model_name' => 'user'],
+            'semester' => ['foreign_key' => 'semester_id', 'primary_key' => 'id', 'model_name' => 'semester'],
+            'uni_group' => ['foreign_key' => 'group_id', 'primary_key' => 'id', 'model_name' => 'group'],
+            'intern_recruitment_application' => ['foreign_key' => 'ira_id', 'primary_key' => 'id', 'model_name' => 'ira']
+        ]);
+        
+        foreach($list as $key => $item){ 
+            $list[$key]['user']->fullname = $list[$key]['user']->fname .' '.$list[$key]['user']->lname; 
+            $list[$key]['user'] = param_hidden($list[$key]['user'], ['password']);
+        }
+    }
+
+    $response = (object)[
+        'row' => [
+            'students' => $list
+        ],
+        'message' => 'لیست دانشجویان با موفقیت ارسال شذ',
+        'code' => 200
+    ];
+
+    return response_json($response, $response->code);
+
 }

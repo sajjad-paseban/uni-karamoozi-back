@@ -172,8 +172,11 @@ if(request()->get->method == "delete-semester"){
     }
     
     $ids = request()->data->ids;
-    
+        
+    $db->query("DELETE FROM stu_request WHERE semester_id IN($ids)");
     $db->query("DELETE FROM stu_semesters WHERE semester_id in($ids)");
+    $db->query("DELETE FROM intern_recruitment_application WHERE semester_id IN($ids)");
+    
     $res = $db->query("DELETE FROM semester where id in($ids)");   
     
     $response = (object)[
